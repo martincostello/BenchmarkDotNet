@@ -54,6 +54,8 @@ namespace BenchmarkDotNet.Running
             using var _ = CtrlCCanceler.Create(ref cancellationToken, compositeLogger);
 
             using var wakeLock = WakeLock.Request(WakeLock.GetWakeLockType(benchmarkRunInfos), "BenchmarkDotNet Running Benchmarks", streamLogger);
+            using var mediaPlayerApplier = new MediaPlayerApplier(compositeLogger);
+            mediaPlayerApplier.Apply();
             var eventProcessor = new CompositeEventProcessor(benchmarkRunInfos);
 
             eventProcessor.OnStartValidationStage();
