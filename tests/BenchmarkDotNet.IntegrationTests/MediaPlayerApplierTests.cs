@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using BenchmarkDotNet.Helpers;
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Tests.Loggers;
@@ -13,6 +14,7 @@ namespace BenchmarkDotNet.IntegrationTests
         public MediaPlayerApplierTests(ITestOutputHelper output) => this.output = output;
 
         [FactEnvSpecific("Media player detection is only supported on Windows", EnvRequirement.WindowsOnly)]
+        [SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "This test is only run on Windows")]
         public void IsMediaPlayingDoesNotThrowOnWindows()
         {
             // Just verify that the method runs without throwing; we don't know if music is playing in CI

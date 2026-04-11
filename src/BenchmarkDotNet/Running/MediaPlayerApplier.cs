@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using BenchmarkDotNet.Detectors;
 using BenchmarkDotNet.Helpers;
 using BenchmarkDotNet.Loggers;
@@ -17,6 +18,7 @@ namespace BenchmarkDotNet.Running
             base.Dispose(exiting);
         }
 
+        [SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "This code is protected with a runtime OS platform check")]
         internal void Apply()
         {
             if (!OsDetector.IsWindows())
@@ -37,6 +39,7 @@ namespace BenchmarkDotNet.Running
             }
         }
 
+        [SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "This code is protected with a runtime OS platform check")]
         private void ResumeMediaIfNeeded()
         {
             if (wasPlaying && OsDetector.IsWindows())

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace BenchmarkDotNet.Helpers
 {
@@ -11,22 +12,28 @@ namespace BenchmarkDotNet.Helpers
         private const int APPCOMMAND_MEDIA_PLAY = 46;
         private const int APPCOMMAND_MEDIA_PAUSE = 47;
 
+        [SupportedOSPlatform("windows")]
         internal static bool IsMediaPlaying()
         {
+            IMMDeviceEnumerator? deviceEnumerator = null;
+            IMMDevice? device = null;
+            object? sessionManagerObj = null;
+            IAudioSessionEnumerator? sessionEnumerator = null;
+
             try
             {
-                var deviceEnumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
-                int hr = deviceEnumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out var device);
+                deviceEnumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+                int hr = deviceEnumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device);
                 if (hr != 0 || device == null)
                     return false;
 
                 var audioSessionManager2Guid = AudioSessionManager2Guid;
-                hr = device.Activate(ref audioSessionManager2Guid, CLSCTX_ALL, IntPtr.Zero, out var sessionManagerObj);
+                hr = device.Activate(ref audioSessionManager2Guid, CLSCTX_ALL, IntPtr.Zero, out sessionManagerObj);
                 if (hr != 0 || sessionManagerObj == null)
                     return false;
 
                 var sessionManager = (IAudioSessionManager2)sessionManagerObj;
-                hr = sessionManager.GetSessionEnumerator(out var sessionEnumerator);
+                hr = sessionManager.GetSessionEnumerator(out sessionEnumerator);
                 if (hr != 0 || sessionEnumerator == null)
                     return false;
 
@@ -36,28 +43,50 @@ namespace BenchmarkDotNet.Helpers
 
                 for (int i = 0; i < count; i++)
                 {
-                    hr = sessionEnumerator.GetSession(i, out var session);
-                    if (hr != 0 || session == null)
-                        continue;
+                    IAudioSessionControl? session = null;
+                    try
+                    {
+                        hr = sessionEnumerator.GetSession(i, out session);
+                        if (hr != 0 || session == null)
+                            continue;
 
-                    hr = session.GetState(out var state);
-                    if (hr == 0 && state == AudioSessionState.AudioSessionStateActive)
-                        return true;
+                        hr = session.GetState(out var state);
+                        if (hr == 0 && state == AudioSessionState.AudioSessionStateActive)
+                            return true;
+                    }
+                    finally
+                    {
+                        if (session != null)
+                            Marshal.ReleaseComObject(session);
+                    }
                 }
             }
             catch
             {
                 // Ignore any errors - if we can't detect media state, assume nothing is playing
             }
+            finally
+            {
+                if (sessionEnumerator != null)
+                    Marshal.ReleaseComObject(sessionEnumerator);
+                if (sessionManagerObj != null)
+                    Marshal.ReleaseComObject(sessionManagerObj);
+                if (device != null)
+                    Marshal.ReleaseComObject(device);
+                if (deviceEnumerator != null)
+                    Marshal.ReleaseComObject(deviceEnumerator);
+            }
 
             return false;
         }
 
+        [SupportedOSPlatform("windows")]
         internal static void PauseMedia()
         {
             PostMessage((IntPtr)HWND_BROADCAST, WM_APPCOMMAND, IntPtr.Zero, (IntPtr)(APPCOMMAND_MEDIA_PAUSE << 16));
         }
 
+        [SupportedOSPlatform("windows")]
         internal static void ResumeMedia()
         {
             PostMessage((IntPtr)HWND_BROADCAST, WM_APPCOMMAND, IntPtr.Zero, (IntPtr)(APPCOMMAND_MEDIA_PLAY << 16));
